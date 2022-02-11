@@ -27,7 +27,7 @@ module.exports = {
         }
     },
     success(data = '', msg = '', code = CODE.SUCCESS) {
-        log4js.debug(data);
+        // log4js.debug(data);
         return {
             code, data, msg
         }
