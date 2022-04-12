@@ -4,6 +4,7 @@ const Counter = require('../models/counterSchema')
 const utils = require('../utils/util')
 const jwt = require('jsonwebtoken')
 const md5 = require('md5')
+const {CODE} = require("../utils/util");
 
 router.prefix('/api/users')
 
@@ -25,6 +26,8 @@ router.post('/login', async (ctx, next) => {
         } else {
             ctx.body = utils.fail('帐号或密码不正确')
         }
+    } else {    // 密码错误
+        ctx.body = utils.fail("密码错误", CODE.USER_ACCOUNT_ERROR);
     }
 })
 
