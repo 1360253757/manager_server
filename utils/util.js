@@ -46,7 +46,7 @@ module.exports = {
         }
         return '';
     },
-    // 递归拼接树形列表
+    // 递归拼接树形菜单
     getTreeMenu(rootList, id, list) {
         for (let i = 0; i < rootList.length; i++) {
             let item = rootList[i]

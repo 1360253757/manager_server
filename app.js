@@ -9,6 +9,7 @@ const jwt = require('koa-jwt')
 const index = require('./routes/index')
 const user = require('./routes/user')
 const menu = require('./routes/menu')
+const roles = require('./routes/roles')
 const log = require('./utils/log4')
 const util = require('./utils/util')
 
@@ -49,6 +50,7 @@ app.use(async (ctx, next) => {
 app.use(index.routes(), index.allowedMethods())
 app.use(user.routes(), user.allowedMethods())
 app.use(menu.routes(), menu.allowedMethods())
+app.use(roles.routes(), roles.allowedMethods())
 
 // error-handling
 app.on('error', (err, ctx) => {
