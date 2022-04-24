@@ -1,10 +1,11 @@
 const router = require('koa-router')()
 const User = require('../models/userSchema')
+const Role = require('../models/roleSchema')
+const Menu = require('../models/menuSchema')
 const Counter = require('../models/counterSchema')
-const utils = require('../utils/util')
+const util = require('../utils/util')
 const jwt = require('jsonwebtoken')
 const md5 = require('md5')
-const {CODE} = require("../utils/util");
 
 router.prefix('/api/users')
 
@@ -13,7 +14,7 @@ router.post('/login', async (ctx, next) => {
     const res = await User.findOne({userName})
     console.log(res)
     if (!res) {
-        ctx.body = utils.fail('用户名或密码错误', utils.CODE.USER_LOGIN_ERROR)
+        ctx.body = util.fail('用户名或密码错误', util.CODE.USER_LOGIN_ERROR)
         return
     }
     let data = res._doc
@@ -22,25 +23,25 @@ router.post('/login', async (ctx, next) => {
         const token = jwt.sign({data}, 'lance', {expiresIn: '1h'});
         if (res) {
             data.token = token
-            ctx.body = utils.success(data)
+            ctx.body = util.success(data)
         } else {
-            ctx.body = utils.fail('帐号或密码不正确')
+            ctx.body = util.fail('帐号或密码不正确')
         }
     } else {    // 密码错误
-        ctx.body = utils.fail("密码错误", CODE.USER_ACCOUNT_ERROR);
+        ctx.body = util.fail("密码错误", util.CODE.USER_ACCOUNT_ERROR);
     }
 })
 
 router.get('/list', async (ctx, next) => {
     const {userId, userName, state} = ctx.request.query
-    const {page, skipIndex} = utils.pager(ctx.request.query)
+    const {page, skipIndex} = util.pager(ctx.request.query)
     let params = {}
     if (userId) params.userId = userId;
     if (userName) params.userName = userName;
     if (state && state != '0') params.state = state;
     const list = await User.find(params, {_id: 0, userPwd: 0}).skip(skipIndex).limit(page.pageSize)
     const total = await User.countDocuments(params);
-    ctx.body = utils.success({
+    ctx.body = util.success({
         page: {
             ...page,
             total
@@ -56,12 +57,12 @@ router.post('/operate', async (ctx, next) => {
             ctx.body = util.fail('参数错误', util.CODE.PARAM_ERROR)
             return;
         }
-        const res = await User.findOne({ $or: [{ userName }, { userEmail }] }, '_id userName userEmail')
+        const res = await User.findOne({$or: [{userName}, {userEmail}]}, '_id userName userEmail')
         if (res) {
-            ctx.body = utils.fail(`系统监测到有重复的用户，信息如下：${res.userName} - ${res.userEmail}`)
+            ctx.body = util.fail(`系统监测到有重复的用户，信息如下：${res.userName} - ${res.userEmail}`)
             return
         } else {
-            const doc = await Counter.findOneAndUpdate({ _id: 'userId' }, { $inc: { sequence_value: 1 } }, { new: true })
+            const doc = await Counter.findOneAndUpdate({_id: 'userId'}, {$inc: {sequence_value: 1}}, {new: true})
             const user = new User({
                 userId: doc.sequence_value,
                 userName,
@@ -75,16 +76,16 @@ router.post('/operate', async (ctx, next) => {
                 mobile
             })
             user.save();
-            ctx.body = utils.success('', '用户创建成功');
+            ctx.body = util.success('', '用户创建成功');
         }
 
     } else {
         if (!deptId) {
-            ctx.body = utils.fail('部门不能为空', utils.CODE.PARAM_ERROR)
+            ctx.body = util.fail('部门不能为空', util.CODE.PARAM_ERROR)
             return
         }
         const res = await User.findOneAndUpdate({userId}, {mobile, job, state, roleList, deptId})
-        ctx.body = utils.success({}, '更新成功')
+        ctx.body = util.success({}, '更新成功')
     }
 })
 
@@ -92,20 +93,69 @@ router.post('/delete', async (ctx, next) => {
     const {userIds} = ctx.request.body
     const res = await User.updateMany({userId: {$in: userIds}}, {state: 2})
     if (res.ok) {
-        ctx.body = utils.success(res.nModified)
+        ctx.body = util.success(res.nModified)
         return
     }
-    ctx.body = utils.fail('删除失败')
+    ctx.body = util.fail('删除失败')
 })
 
 // 获取全量用户列表
 router.get('/all/list', async (ctx) => {
     try {
         const list = await User.find({}, "userId userName userEmail")
-        ctx.body = utils.success(list)
+        ctx.body = util.success(list)
     } catch (error) {
-        ctx.body = utils.fail(error.stack)
+        ctx.body = util.fail(error.stack)
     }
 })
+
+// 获取用户对应的权限菜单
+router.get("/getPermissionList", async (ctx) => {
+    let authorization = ctx.request.headers.authorization
+    let {data} = util.decoded(authorization)
+    console.log(data)
+    let menuList = await getMenuList(data.role, data.roleList);
+    let actionList = getAction(JSON.parse(JSON.stringify(menuList)))
+    ctx.body = util.success({menuList, actionList});
+})
+
+async function getMenuList(userRole, roleKeys) {
+    let rootList = []
+    console.log(userRole)
+    if (userRole == 0) {
+        rootList = await Menu.find({}) || []
+    } else {
+        // 根据用户拥有的角色，获取权限列表
+        // 现查找用户对应的角色有哪些
+        let roleList = await Role.find({_id: {$in: roleKeys}})
+        let permissionList = []
+        roleList.map(role => {
+            let {checkedKeys, halfCheckedKeys} = role.permissionList;
+            permissionList = permissionList.concat([...checkedKeys, ...halfCheckedKeys])
+        })
+        permissionList = [...new Set(permissionList)]
+        rootList = await Menu.find({_id: {$in: permissionList}})
+    }
+    return util.getTreeMenu(rootList, null, [])
+}
+
+function getAction(list) {
+    let actionList = []
+    const deep = (arr) => {
+        while (arr.length) {
+            let item = arr.pop();
+            if (item.action) {
+                item.action.map(action => {
+                    actionList.push(action.menuCode)
+                })
+            }
+            if (item.children && !item.action) {
+                deep(item.children)
+            }
+        }
+    }
+    deep(list)
+    return actionList;
+}
 
 module.exports = router
