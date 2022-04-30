@@ -11,6 +11,7 @@ const user = require('./routes/user')
 const menu = require('./routes/menu')
 const roles = require('./routes/roles')
 const depts = require('./routes/depts')
+const leave = require('./routes/leave')
 const log = require('./utils/log4')
 const util = require('./utils/util')
 
@@ -53,6 +54,7 @@ app.use(user.routes(), user.allowedMethods())
 app.use(menu.routes(), menu.allowedMethods())
 app.use(roles.routes(), roles.allowedMethods())
 app.use(depts.routes(), depts.allowedMethods())
+app.use(leave.routes(), leave.allowedMethods())
 
 // error-handling
 app.on('error', (err, ctx) => {
