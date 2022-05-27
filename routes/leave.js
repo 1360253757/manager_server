@@ -73,13 +73,13 @@ router.post("/operate", async (ctx) => {
         orderNo += util.formateDate(new Date(), "yyyyMMdd");
         const total = await Leave.countDocuments()
         params.orderNo = orderNo + total;
-
+        console.log(data)
         // 获取用户当前部门ID
         let id = data.deptId.pop()
         // 查找负责人信息
         let dept = await Dept.findById(id)
         // 获取人事部门和财务部门负责人信息
-        let userList = await Dept.find({ deptName: { $in: ['人事部门', '财务部门'] } })
+        let userList = await Dept.find({ deptName: { $in: ['财务部'] } })
 
         let auditUsers = dept.userName;
         let auditFlows = [

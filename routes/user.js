@@ -20,7 +20,7 @@ router.post('/login', async (ctx, next) => {
     let data = res._doc
     if (md5(userPwd) === data.userPwd) {    // 密码正确
         delete data.userPwd
-        const token = jwt.sign({data}, 'lance', {expiresIn: '1h'});
+        const token = jwt.sign({data}, 'lance', {expiresIn: '24h'});
         if (res) {
             data.token = token
             ctx.body = util.success(data)
@@ -99,7 +99,7 @@ router.post('/delete', async (ctx, next) => {
     ctx.body = util.fail('删除失败')
 })
 
-// 获取全量用户列表
+// 获取全部用户列表
 router.get('/all/list', async (ctx) => {
     try {
         const list = await User.find({}, "userId userName userEmail")
@@ -113,7 +113,6 @@ router.get('/all/list', async (ctx) => {
 router.get("/getPermissionList", async (ctx) => {
     let authorization = ctx.request.headers.authorization
     let {data} = util.decoded(authorization)
-    console.log(data)
     let menuList = await getMenuList(data.role, data.roleList);
     let actionList = getAction(JSON.parse(JSON.stringify(menuList)))
     ctx.body = util.success({menuList, actionList});
@@ -122,7 +121,7 @@ router.get("/getPermissionList", async (ctx) => {
 async function getMenuList(userRole, roleKeys) {
     let rootList = []
     console.log(userRole)
-    if (userRole == 0) {
+    if (userRole == 0) {    // 管理员
         rootList = await Menu.find({}) || []
     } else {
         // 根据用户拥有的角色，获取权限列表

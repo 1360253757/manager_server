@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const deptSchema = mongoose.Schema({
     deptName: String,
-    userId: String,
+    userId: String, // 负责人
     userName: String,
     userEmail: String,
     parentId: [mongoose.Types.ObjectId],
